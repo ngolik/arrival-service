@@ -12,7 +12,9 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.math.BigDecimal
 import java.time.LocalDateTime
@@ -31,7 +33,18 @@ class ArrivalControllerTest(@Autowired private val mockMvc: MockMvc, @Autowired 
     )
 
     @Test
-    fun `POST arrivals with a valid body returns 201`() {
+    fun `GET arrivals returns 200 with arrival response DTOs`() {
+        val arrival = sampleArrival()
+        `when`(arrivalService.getAllArrivals()).thenReturn(listOf(arrival))
+
+        mockMvc.perform(get("/api/arrivals"))
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$[0].id").value(1))
+                .andExpect(jsonPath("$[0].items[0].name").value("Widget"))
+    }
+
+    @Test
+    fun `POST arrivals with a valid body returns 201 with an arrival response DTO`() {
         val arrival = sampleArrival()
         `when`(arrivalService.createArrival(arrival)).thenReturn(arrival)
 
@@ -40,6 +53,8 @@ class ArrivalControllerTest(@Autowired private val mockMvc: MockMvc, @Autowired 
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(arrival))
         ).andExpect(status().isCreated)
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.items[0].name").value("Widget"))
     }
 
     @Test
