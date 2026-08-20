@@ -11,4 +11,6 @@ class ArrivalServiceImpl(private val arrivalRepository: ArrivalRepository): Arri
     override fun getAllArrivals():List<Arrival> = arrivalRepository.findAll()
 
     override fun createArrival(arrival: Arrival): Arrival = arrivalRepository.save(arrival)
+
+    override fun getArrivalById(id: Long): Arrival? = arrivalRepository.findById(id).orElse(null)
 }

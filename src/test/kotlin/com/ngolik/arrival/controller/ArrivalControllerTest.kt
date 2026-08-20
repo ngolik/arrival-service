@@ -44,6 +44,25 @@ class ArrivalControllerTest(@Autowired private val mockMvc: MockMvc, @Autowired 
     }
 
     @Test
+    fun `GET arrivals by id returns 200 with the arrival response DTO when found`() {
+        val arrival = sampleArrival()
+        `when`(arrivalService.getArrivalById(1L)).thenReturn(arrival)
+
+        mockMvc.perform(get("/api/arrivals/1"))
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.items[0].name").value("Widget"))
+    }
+
+    @Test
+    fun `GET arrivals by id returns 404 when not found`() {
+        `when`(arrivalService.getArrivalById(99L)).thenReturn(null)
+
+        mockMvc.perform(get("/api/arrivals/99"))
+                .andExpect(status().isNotFound)
+    }
+
+    @Test
     fun `POST arrivals with a valid body returns 201 with an arrival response DTO`() {
         val arrival = sampleArrival()
         `when`(arrivalService.createArrival(arrival)).thenReturn(arrival)
