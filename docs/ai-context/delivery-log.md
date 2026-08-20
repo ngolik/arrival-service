@@ -6,6 +6,7 @@ Per-feature detail: `docs/ai-context/features/<slug>/cost-summary.json`.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 2026-08-19 | create-arrival-endpoint | | $3.9436 (estimated) | estimated | 136 | 9564218 | 41337 | 68 | N | 0 | Full pipeline (brief already drafted); pre-push-review clean, no Critical/Major |
 | 2026-08-20 | scrum-1-dto-layer-for-arrivals | | $1.6677 (estimated) | estimated | 74 | 3545430 | 22636 | 37 | N | 0 | Full pipeline from Jira SCRUM-1 via jira-to-brief; pre-push-review clean, no Critical/Major |
+| 2026-08-20 | scrum-2-get-arrival-by-id | | $1.6507 (estimated) | estimated | 86 | 3962198 | 15548 | 43 | N | 0 | Full pipeline from Jira SCRUM-2 via jira-to-brief; pre-push-review clean, no Critical/Major |
 
 **Cost basis:** `measured` = session-reported; `estimated` = projected (not billing).
 Never present estimated USD as invoiced cost.
