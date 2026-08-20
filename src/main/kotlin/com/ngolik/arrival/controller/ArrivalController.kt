@@ -1,5 +1,7 @@
 package com.ngolik.arrival.controller
 
+import com.ngolik.arrival.dto.ArrivalResponse
+import com.ngolik.arrival.dto.toResponse
 import com.ngolik.arrival.entity.Arrival
 import com.ngolik.arrival.service.ArrivalService
 import jakarta.validation.Valid
@@ -16,9 +18,9 @@ import org.springframework.web.bind.annotation.RestController
 class ArrivalController(private val arrivalService: ArrivalService) {
 
     @GetMapping
-    fun getAllArrivals(): List<Arrival> = arrivalService.getAllArrivals()
+    fun getAllArrivals(): List<ArrivalResponse> = arrivalService.getAllArrivals().map { it.toResponse() }
 
     @PostMapping
-    fun createArrival(@Valid @RequestBody arrival: Arrival): ResponseEntity<Arrival> =
-            ResponseEntity.status(HttpStatus.CREATED).body(arrivalService.createArrival(arrival))
+    fun createArrival(@Valid @RequestBody arrival: Arrival): ResponseEntity<ArrivalResponse> =
+            ResponseEntity.status(HttpStatus.CREATED).body(arrivalService.createArrival(arrival).toResponse())
 }
