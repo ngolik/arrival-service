@@ -6,6 +6,7 @@ plugins {
     kotlin("jvm") version "1.8.22"
     kotlin("plugin.spring") version "1.8.22"
     kotlin("plugin.jpa") version "1.8.22"
+    kotlin("plugin.lombok") version "1.8.22"
 }
 
 group = "com.ngolik"
@@ -38,6 +39,7 @@ dependencies {
     runtimeOnly("org.postgresql:postgresql")
     annotationProcessor("org.projectlombok:lombok")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation(kotlin("test"))
 }
 
 tasks.withType<KotlinCompile> {
