@@ -35,3 +35,6 @@ out/
 
 ### VS Code ###
 .vscode/
+
+.review/
+.deep-review/
