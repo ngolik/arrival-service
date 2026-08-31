@@ -6,4 +6,5 @@ interface ArrivalService {
     fun getAllArrivals(): List<Arrival>
     fun createArrival(arrival: Arrival): Arrival
     fun getArrivalById(id: Long): Arrival?
+    fun markAsWaiting(id: Long, remark: String?): Arrival?
 }

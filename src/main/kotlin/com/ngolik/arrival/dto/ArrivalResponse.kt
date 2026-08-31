@@ -5,5 +5,7 @@ import java.time.LocalDateTime
 data class ArrivalResponse(
         val id: Long,
         val arrivalDate: LocalDateTime,
-        val items: List<ItemResponse>
+        val items: List<ItemResponse>,
+        val isWaiting: Boolean,
+        val remark: String?
 )
