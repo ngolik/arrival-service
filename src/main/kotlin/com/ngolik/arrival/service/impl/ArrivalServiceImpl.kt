@@ -13,4 +13,9 @@ class ArrivalServiceImpl(private val arrivalRepository: ArrivalRepository): Arri
     override fun createArrival(arrival: Arrival): Arrival = arrivalRepository.save(arrival)
 
     override fun getArrivalById(id: Long): Arrival? = arrivalRepository.findById(id).orElse(null)
+
+    override fun markAsWaiting(id: Long, remark: String?): Arrival? =
+            arrivalRepository.findById(id).orElse(null)
+                    ?.copy(isWaiting = true, remark = remark)
+                    ?.let { arrivalRepository.save(it) }
 }

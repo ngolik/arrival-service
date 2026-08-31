@@ -14,5 +14,7 @@ fun Item.toResponse() = ItemResponse(
 fun Arrival.toResponse() = ArrivalResponse(
         id = id,
         arrivalDate = arrivalDate,
-        items = items.map { it.toResponse() }
+        items = items.map { it.toResponse() },
+        isWaiting = isWaiting,
+        remark = remark
 )
