@@ -1,6 +1,7 @@
 package com.ngolik.arrival.controller
 
 import com.ngolik.arrival.dto.ArrivalResponse
+import com.ngolik.arrival.dto.MarkArrivalDamagedRequest
 import com.ngolik.arrival.dto.MarkArrivalWaitingRequest
 import com.ngolik.arrival.dto.toResponse
 import com.ngolik.arrival.entity.Arrival
@@ -38,6 +39,15 @@ class ArrivalController(private val arrivalService: ArrivalService) {
             @Valid @RequestBody(required = false) request: MarkArrivalWaitingRequest?
     ): ResponseEntity<ArrivalResponse> =
             arrivalService.markAsWaiting(id, (request ?: MarkArrivalWaitingRequest()).remark)
+                    ?.let { ResponseEntity.ok(it.toResponse()) }
+                    ?: ResponseEntity.notFound().build()
+
+    @PutMapping("/{id}/damaged")
+    fun markArrivalAsDamaged(
+            @PathVariable id: Long,
+            @Valid @RequestBody(required = false) request: MarkArrivalDamagedRequest?
+    ): ResponseEntity<ArrivalResponse> =
+            arrivalService.markAsDamaged(id, (request ?: MarkArrivalDamagedRequest()).remark)
                     ?.let { ResponseEntity.ok(it.toResponse()) }
                     ?: ResponseEntity.notFound().build()
 }

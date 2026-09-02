@@ -19,5 +19,8 @@ data class Arrival(
         val items: List<Item>,
         val isWaiting: Boolean = false,
         @field:Size(max = 500)
-        val remark: String? = null
+        val remark: String? = null,
+        val isDamaged: Boolean = false,
+        @field:Size(max = 500)
+        val damageRemark: String? = null
 )
