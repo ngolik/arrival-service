@@ -1,6 +1,7 @@
 package com.ngolik.arrival.controller
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.ngolik.arrival.dto.MarkArrivalDamagedRequest
 import com.ngolik.arrival.dto.MarkArrivalWaitingRequest
 import com.ngolik.arrival.entity.Arrival
 import com.ngolik.arrival.entity.Item
@@ -150,5 +151,77 @@ class ArrivalControllerTest(@Autowired private val mockMvc: MockMvc, @Autowired 
                 .andExpect(status().isOk)
                 .andExpect(jsonPath("$.isWaiting").value(true))
                 .andExpect(jsonPath("$.remark").value("Delayed at customs"))
+    }
+
+    @Test
+    fun `PUT arrivals damaged with a remark returns 200 with the updated arrival response DTO`() {
+        val arrival = sampleArrival()
+        val damagedArrival = arrival.copy(isDamaged = true, damageRemark = "Crushed pallet")
+        `when`(arrivalService.markAsDamaged(1L, "Crushed pallet")).thenReturn(damagedArrival)
+
+        mockMvc.perform(
+                put("/api/arrivals/1/damaged")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(MarkArrivalDamagedRequest(remark = "Crushed pallet")))
+        ).andExpect(status().isOk)
+                .andExpect(jsonPath("$.isDamaged").value(true))
+                .andExpect(jsonPath("$.damageRemark").value("Crushed pallet"))
+    }
+
+    @Test
+    fun `PUT arrivals damaged with no body returns 200 with a null remark`() {
+        val arrival = sampleArrival()
+        val damagedArrival = arrival.copy(isDamaged = true, damageRemark = null)
+        `when`(arrivalService.markAsDamaged(eq(1L), isNull())).thenReturn(damagedArrival)
+
+        mockMvc.perform(put("/api/arrivals/1/damaged"))
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$.isDamaged").value(true))
+    }
+
+    @Test
+    fun `PUT arrivals damaged for a missing arrival returns 404`() {
+        `when`(arrivalService.markAsDamaged(eq(99L), isNull())).thenReturn(null)
+
+        mockMvc.perform(put("/api/arrivals/99/damaged"))
+                .andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `PUT arrivals damaged with a remark over 500 characters returns 400 and does not update`() {
+        val tooLongRemark = "a".repeat(501)
+
+        mockMvc.perform(
+                put("/api/arrivals/1/damaged")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(MarkArrivalDamagedRequest(remark = tooLongRemark)))
+        ).andExpect(status().isBadRequest)
+
+        verify(arrivalService, never()).markAsDamaged(eq(1L), anyString())
+    }
+
+    @Test
+    fun `GET arrivals by id surfaces damaged state and remark once set`() {
+        val damagedArrival = sampleArrival().copy(isDamaged = true, damageRemark = "Crushed pallet")
+        `when`(arrivalService.getArrivalById(1L)).thenReturn(damagedArrival)
+
+        mockMvc.perform(get("/api/arrivals/1"))
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$.isDamaged").value(true))
+                .andExpect(jsonPath("$.damageRemark").value("Crushed pallet"))
+    }
+
+    @Test
+    fun `GET arrivals by id surfaces waiting and damaged as independent facts with separate remarks`() {
+        val bothFlaggedArrival = sampleArrival()
+                .copy(isWaiting = true, remark = "Delayed at customs", isDamaged = true, damageRemark = "Crushed pallet")
+        `when`(arrivalService.getArrivalById(1L)).thenReturn(bothFlaggedArrival)
+
+        mockMvc.perform(get("/api/arrivals/1"))
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$.isWaiting").value(true))
+                .andExpect(jsonPath("$.remark").value("Delayed at customs"))
+                .andExpect(jsonPath("$.isDamaged").value(true))
+                .andExpect(jsonPath("$.damageRemark").value("Crushed pallet"))
     }
 }

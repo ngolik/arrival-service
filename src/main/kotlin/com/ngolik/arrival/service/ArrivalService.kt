@@ -7,4 +7,5 @@ interface ArrivalService {
     fun createArrival(arrival: Arrival): Arrival
     fun getArrivalById(id: Long): Arrival?
     fun markAsWaiting(id: Long, remark: String?): Arrival?
+    fun markAsDamaged(id: Long, remark: String?): Arrival?
 }
