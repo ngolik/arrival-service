@@ -8,4 +8,5 @@ interface ArrivalService {
     fun getArrivalById(id: Long): Arrival?
     fun markAsWaiting(id: Long, remark: String?): Arrival?
     fun markAsDamaged(id: Long, remark: String?): Arrival?
+    fun markAsSealed(id: Long, operatorId: Long, note: String?): Arrival?
 }
