@@ -2,6 +2,7 @@ package com.ngolik.arrival.controller
 
 import com.ngolik.arrival.dto.ArrivalResponse
 import com.ngolik.arrival.dto.MarkArrivalDamagedRequest
+import com.ngolik.arrival.dto.MarkArrivalShortRequest
 import com.ngolik.arrival.dto.MarkArrivalWaitingRequest
 import com.ngolik.arrival.dto.toResponse
 import com.ngolik.arrival.entity.Arrival
@@ -48,6 +49,15 @@ class ArrivalController(private val arrivalService: ArrivalService) {
             @Valid @RequestBody(required = false) request: MarkArrivalDamagedRequest?
     ): ResponseEntity<ArrivalResponse> =
             arrivalService.markAsDamaged(id, (request ?: MarkArrivalDamagedRequest()).remark)
+                    ?.let { ResponseEntity.ok(it.toResponse()) }
+                    ?: ResponseEntity.notFound().build()
+
+    @PutMapping("/{id}/shortage")
+    fun markArrivalAsShort(
+            @PathVariable id: Long,
+            @Valid @RequestBody(required = false) request: MarkArrivalShortRequest?
+    ): ResponseEntity<ArrivalResponse> =
+            arrivalService.markAsShort(id, (request ?: MarkArrivalShortRequest()).remark)
                     ?.let { ResponseEntity.ok(it.toResponse()) }
                     ?: ResponseEntity.notFound().build()
 }

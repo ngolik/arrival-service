@@ -2,6 +2,7 @@ package com.ngolik.arrival.controller
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.ngolik.arrival.dto.MarkArrivalDamagedRequest
+import com.ngolik.arrival.dto.MarkArrivalShortRequest
 import com.ngolik.arrival.dto.MarkArrivalWaitingRequest
 import com.ngolik.arrival.entity.Arrival
 import com.ngolik.arrival.entity.Item
@@ -223,5 +224,83 @@ class ArrivalControllerTest(@Autowired private val mockMvc: MockMvc, @Autowired 
                 .andExpect(jsonPath("$.remark").value("Delayed at customs"))
                 .andExpect(jsonPath("$.isDamaged").value(true))
                 .andExpect(jsonPath("$.damageRemark").value("Crushed pallet"))
+    }
+
+    @Test
+    fun `PUT arrivals shortage with a remark returns 200 with the updated arrival response DTO`() {
+        val arrival = sampleArrival()
+        val shortArrival = arrival.copy(isShort = true, shortRemark = "Two cartons missing")
+        `when`(arrivalService.markAsShort(1L, "Two cartons missing")).thenReturn(shortArrival)
+
+        mockMvc.perform(
+                put("/api/arrivals/1/shortage")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(MarkArrivalShortRequest(remark = "Two cartons missing")))
+        ).andExpect(status().isOk)
+                .andExpect(jsonPath("$.isShort").value(true))
+                .andExpect(jsonPath("$.shortRemark").value("Two cartons missing"))
+    }
+
+    @Test
+    fun `PUT arrivals shortage with no body returns 200 with a null remark`() {
+        val arrival = sampleArrival()
+        val shortArrival = arrival.copy(isShort = true, shortRemark = null)
+        `when`(arrivalService.markAsShort(eq(1L), isNull())).thenReturn(shortArrival)
+
+        mockMvc.perform(put("/api/arrivals/1/shortage"))
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$.isShort").value(true))
+    }
+
+    @Test
+    fun `PUT arrivals shortage for a missing arrival returns 404`() {
+        `when`(arrivalService.markAsShort(eq(99L), isNull())).thenReturn(null)
+
+        mockMvc.perform(put("/api/arrivals/99/shortage"))
+                .andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `PUT arrivals shortage with a remark over 500 characters returns 400 and does not update`() {
+        val tooLongRemark = "a".repeat(501)
+
+        mockMvc.perform(
+                put("/api/arrivals/1/shortage")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(MarkArrivalShortRequest(remark = tooLongRemark)))
+        ).andExpect(status().isBadRequest)
+
+        verify(arrivalService, never()).markAsShort(eq(1L), anyString())
+    }
+
+    @Test
+    fun `GET arrivals by id surfaces short state and remark once set`() {
+        val shortArrival = sampleArrival().copy(isShort = true, shortRemark = "Two cartons missing")
+        `when`(arrivalService.getArrivalById(1L)).thenReturn(shortArrival)
+
+        mockMvc.perform(get("/api/arrivals/1"))
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$.isShort").value(true))
+                .andExpect(jsonPath("$.shortRemark").value("Two cartons missing"))
+    }
+
+    @Test
+    fun `GET arrivals by id surfaces waiting, damaged and short as independent facts with separate remarks`() {
+        val allFlaggedArrival = sampleArrival()
+                .copy(
+                        isWaiting = true, remark = "Delayed at customs",
+                        isDamaged = true, damageRemark = "Crushed pallet",
+                        isShort = true, shortRemark = "Two cartons missing"
+                )
+        `when`(arrivalService.getArrivalById(1L)).thenReturn(allFlaggedArrival)
+
+        mockMvc.perform(get("/api/arrivals/1"))
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$.isWaiting").value(true))
+                .andExpect(jsonPath("$.remark").value("Delayed at customs"))
+                .andExpect(jsonPath("$.isDamaged").value(true))
+                .andExpect(jsonPath("$.damageRemark").value("Crushed pallet"))
+                .andExpect(jsonPath("$.isShort").value(true))
+                .andExpect(jsonPath("$.shortRemark").value("Two cartons missing"))
     }
 }
