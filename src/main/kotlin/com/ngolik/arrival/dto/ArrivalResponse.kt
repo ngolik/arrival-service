@@ -9,5 +9,7 @@ data class ArrivalResponse(
         val isWaiting: Boolean,
         val remark: String?,
         val isDamaged: Boolean,
-        val damageRemark: String?
+        val damageRemark: String?,
+        val isShort: Boolean,
+        val shortRemark: String?
 )

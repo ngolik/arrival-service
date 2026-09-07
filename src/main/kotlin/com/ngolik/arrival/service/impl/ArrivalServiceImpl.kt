@@ -23,4 +23,9 @@ class ArrivalServiceImpl(private val arrivalRepository: ArrivalRepository): Arri
             arrivalRepository.findById(id).orElse(null)
                     ?.copy(isDamaged = true, damageRemark = remark)
                     ?.let { arrivalRepository.save(it) }
+
+    override fun markAsShort(id: Long, remark: String?): Arrival? =
+            arrivalRepository.findById(id).orElse(null)
+                    ?.copy(isShort = true, shortRemark = remark)
+                    ?.let { arrivalRepository.save(it) }
 }
