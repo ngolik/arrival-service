@@ -1,12 +1,17 @@
 package com.ngolik.arrival.controller
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.ngolik.arrival.authclient.UserValidator
 import com.ngolik.arrival.dto.MarkArrivalDamagedRequest
+import com.ngolik.arrival.dto.MarkArrivalSealedRequest
 import com.ngolik.arrival.dto.MarkArrivalWaitingRequest
 import com.ngolik.arrival.entity.Arrival
 import com.ngolik.arrival.entity.Item
+import com.ngolik.arrival.exception.AuthServiceUnavailableException
+import com.ngolik.arrival.exception.UnknownOperatorException
 import com.ngolik.arrival.service.ArrivalService
 import org.junit.jupiter.api.Test
+import org.mockito.ArgumentMatchers.anyLong
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.ArgumentMatchers.eq
 import org.mockito.ArgumentMatchers.isNull
@@ -33,6 +38,9 @@ class ArrivalControllerTest(@Autowired private val mockMvc: MockMvc, @Autowired 
 
     @MockBean
     private lateinit var arrivalService: ArrivalService
+
+    @MockBean
+    private lateinit var userValidator: UserValidator
 
     private fun sampleArrival() = Arrival(
             id = 1L,
@@ -223,5 +231,126 @@ class ArrivalControllerTest(@Autowired private val mockMvc: MockMvc, @Autowired 
                 .andExpect(jsonPath("$.remark").value("Delayed at customs"))
                 .andExpect(jsonPath("$.isDamaged").value(true))
                 .andExpect(jsonPath("$.damageRemark").value("Crushed pallet"))
+    }
+
+    @Test
+    fun `PUT arrivals sealed with a note returns 200 with the updated arrival response DTO`() {
+        val arrival = sampleArrival()
+        val sealedArrival = arrival.copy(isSealed = true, sealNote = "Inspected, passed")
+        `when`(arrivalService.markAsSealed(1L, 42L, "Inspected, passed")).thenReturn(sealedArrival)
+
+        mockMvc.perform(
+                put("/api/arrivals/1/sealed")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(MarkArrivalSealedRequest(operatorId = 42L, note = "Inspected, passed")))
+        ).andExpect(status().isOk)
+                .andExpect(jsonPath("$.isSealed").value(true))
+                .andExpect(jsonPath("$.sealNote").value("Inspected, passed"))
+    }
+
+    @Test
+    fun `PUT arrivals sealed with no note returns 200 with a null seal note`() {
+        val arrival = sampleArrival()
+        val sealedArrival = arrival.copy(isSealed = true, sealNote = null)
+        `when`(arrivalService.markAsSealed(eq(1L), eq(42L), isNull())).thenReturn(sealedArrival)
+
+        mockMvc.perform(
+                put("/api/arrivals/1/sealed")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(MarkArrivalSealedRequest(operatorId = 42L)))
+        ).andExpect(status().isOk)
+                .andExpect(jsonPath("$.isSealed").value(true))
+    }
+
+    @Test
+    fun `PUT arrivals sealed for a missing arrival returns 404`() {
+        `when`(arrivalService.markAsSealed(eq(99L), eq(42L), isNull())).thenReturn(null)
+
+        mockMvc.perform(
+                put("/api/arrivals/99/sealed")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(MarkArrivalSealedRequest(operatorId = 42L)))
+        ).andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `PUT arrivals sealed with a note over 500 characters returns 400 and does not update`() {
+        val tooLongNote = "a".repeat(501)
+
+        mockMvc.perform(
+                put("/api/arrivals/1/sealed")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(MarkArrivalSealedRequest(operatorId = 42L, note = tooLongNote)))
+        ).andExpect(status().isBadRequest)
+
+        verify(arrivalService, never()).markAsSealed(eq(1L), eq(42L), anyString())
+    }
+
+    @Test
+    fun `PUT arrivals sealed with a body missing operatorId returns 400`() {
+        val missingOperatorJson = """{"note":"Inspected"}"""
+
+        mockMvc.perform(
+                put("/api/arrivals/1/sealed")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(missingOperatorJson)
+        ).andExpect(status().isBadRequest)
+
+        verify(arrivalService, never()).markAsSealed(eq(1L), anyLong(), anyString())
+    }
+
+    @Test
+    fun `PUT arrivals sealed with an unknown operator returns 400 and does not update`() {
+        `when`(arrivalService.markAsSealed(eq(1L), eq(99L), isNull()))
+                .thenThrow(UnknownOperatorException("operatorId 99 does not correspond to an existing user"))
+
+        mockMvc.perform(
+                put("/api/arrivals/1/sealed")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(MarkArrivalSealedRequest(operatorId = 99L)))
+        ).andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `PUT arrivals sealed when auth-service is unreachable returns 502`() {
+        `when`(arrivalService.markAsSealed(eq(1L), eq(42L), isNull()))
+                .thenThrow(AuthServiceUnavailableException("failed to validate operator 42 with auth-service"))
+
+        mockMvc.perform(
+                put("/api/arrivals/1/sealed")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(MarkArrivalSealedRequest(operatorId = 42L)))
+        ).andExpect(status().isBadGateway)
+    }
+
+    @Test
+    fun `GET arrivals by id surfaces sealed state and note once set`() {
+        val sealedArrival = sampleArrival().copy(isSealed = true, sealNote = "Inspected, passed")
+        `when`(arrivalService.getArrivalById(1L)).thenReturn(sealedArrival)
+
+        mockMvc.perform(get("/api/arrivals/1"))
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$.isSealed").value(true))
+                .andExpect(jsonPath("$.sealNote").value("Inspected, passed"))
+    }
+
+    @Test
+    fun `GET arrivals by id surfaces waiting, damaged, and sealed as independent facts with separate notes`() {
+        val allFlaggedArrival = sampleArrival()
+                .copy(
+                        isWaiting = true, remark = "Delayed at customs",
+                        isDamaged = true, damageRemark = "Crushed pallet",
+                        isSealed = true, sealNote = "Inspected, passed"
+                )
+        `when`(arrivalService.getArrivalById(1L)).thenReturn(allFlaggedArrival)
+
+        mockMvc.perform(get("/api/arrivals/1"))
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$.isWaiting").value(true))
+                .andExpect(jsonPath("$.remark").value("Delayed at customs"))
+                .andExpect(jsonPath("$.isDamaged").value(true))
+                .andExpect(jsonPath("$.damageRemark").value("Crushed pallet"))
+                .andExpect(jsonPath("$.isSealed").value(true))
+                .andExpect(jsonPath("$.sealNote").value("Inspected, passed"))
     }
 }

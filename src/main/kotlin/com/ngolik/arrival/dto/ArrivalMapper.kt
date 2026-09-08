@@ -18,5 +18,7 @@ fun Arrival.toResponse() = ArrivalResponse(
         isWaiting = isWaiting,
         remark = remark,
         isDamaged = isDamaged,
-        damageRemark = damageRemark
+        damageRemark = damageRemark,
+        isSealed = isSealed,
+        sealNote = sealNote
 )

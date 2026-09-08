@@ -2,9 +2,12 @@ package com.ngolik.arrival.controller
 
 import com.ngolik.arrival.dto.ArrivalResponse
 import com.ngolik.arrival.dto.MarkArrivalDamagedRequest
+import com.ngolik.arrival.dto.MarkArrivalSealedRequest
 import com.ngolik.arrival.dto.MarkArrivalWaitingRequest
 import com.ngolik.arrival.dto.toResponse
 import com.ngolik.arrival.entity.Arrival
+import com.ngolik.arrival.exception.AuthServiceUnavailableException
+import com.ngolik.arrival.exception.UnknownOperatorException
 import com.ngolik.arrival.service.ArrivalService
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
@@ -50,4 +53,19 @@ class ArrivalController(private val arrivalService: ArrivalService) {
             arrivalService.markAsDamaged(id, (request ?: MarkArrivalDamagedRequest()).remark)
                     ?.let { ResponseEntity.ok(it.toResponse()) }
                     ?: ResponseEntity.notFound().build()
+
+    @PutMapping("/{id}/sealed")
+    fun markArrivalAsSealed(
+            @PathVariable id: Long,
+            @Valid @RequestBody request: MarkArrivalSealedRequest
+    ): ResponseEntity<ArrivalResponse> =
+            try {
+                arrivalService.markAsSealed(id, request.operatorId!!, request.note)
+                        ?.let { ResponseEntity.ok(it.toResponse()) }
+                        ?: ResponseEntity.notFound().build()
+            } catch (e: UnknownOperatorException) {
+                ResponseEntity.badRequest().build()
+            } catch (e: AuthServiceUnavailableException) {
+                ResponseEntity.status(HttpStatus.BAD_GATEWAY).build()
+            }
 }
