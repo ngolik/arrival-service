@@ -20,5 +20,7 @@ fun Arrival.toResponse() = ArrivalResponse(
         isDamaged = isDamaged,
         damageRemark = damageRemark,
         isSealed = isSealed,
-        sealNote = sealNote
+        sealNote = sealNote,
+        isSurplus = isSurplus,
+        surplusRemark = surplusRemark
 )

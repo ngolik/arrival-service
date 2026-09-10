@@ -11,5 +11,7 @@ data class ArrivalResponse(
         val isDamaged: Boolean,
         val damageRemark: String?,
         val isSealed: Boolean,
-        val sealNote: String?
+        val sealNote: String?,
+        val isSurplus: Boolean,
+        val surplusRemark: String?
 )
