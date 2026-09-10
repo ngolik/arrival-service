@@ -25,5 +25,8 @@ data class Arrival(
         val damageRemark: String? = null,
         val isSealed: Boolean = false,
         @field:Size(max = 500)
-        val sealNote: String? = null
+        val sealNote: String? = null,
+        val isSurplus: Boolean = false,
+        @field:Size(max = 500)
+        val surplusRemark: String? = null
 )

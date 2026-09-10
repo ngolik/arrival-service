@@ -3,6 +3,7 @@ package com.ngolik.arrival.controller
 import com.ngolik.arrival.dto.ArrivalResponse
 import com.ngolik.arrival.dto.MarkArrivalDamagedRequest
 import com.ngolik.arrival.dto.MarkArrivalSealedRequest
+import com.ngolik.arrival.dto.MarkArrivalSurplusRequest
 import com.ngolik.arrival.dto.MarkArrivalWaitingRequest
 import com.ngolik.arrival.dto.toResponse
 import com.ngolik.arrival.entity.Arrival
@@ -68,4 +69,13 @@ class ArrivalController(private val arrivalService: ArrivalService) {
             } catch (e: AuthServiceUnavailableException) {
                 ResponseEntity.status(HttpStatus.BAD_GATEWAY).build()
             }
+
+    @PutMapping("/{id}/surplus")
+    fun markArrivalAsSurplus(
+            @PathVariable id: Long,
+            @Valid @RequestBody(required = false) request: MarkArrivalSurplusRequest?
+    ): ResponseEntity<ArrivalResponse> =
+            arrivalService.markAsSurplus(id, (request ?: MarkArrivalSurplusRequest()).remark)
+                    ?.let { ResponseEntity.ok(it.toResponse()) }
+                    ?: ResponseEntity.notFound().build()
 }

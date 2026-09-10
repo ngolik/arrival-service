@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.ngolik.arrival.authclient.UserValidator
 import com.ngolik.arrival.dto.MarkArrivalDamagedRequest
 import com.ngolik.arrival.dto.MarkArrivalSealedRequest
+import com.ngolik.arrival.dto.MarkArrivalSurplusRequest
 import com.ngolik.arrival.dto.MarkArrivalWaitingRequest
 import com.ngolik.arrival.entity.Arrival
 import com.ngolik.arrival.entity.Item
@@ -352,5 +353,128 @@ class ArrivalControllerTest(@Autowired private val mockMvc: MockMvc, @Autowired 
                 .andExpect(jsonPath("$.damageRemark").value("Crushed pallet"))
                 .andExpect(jsonPath("$.isSealed").value(true))
                 .andExpect(jsonPath("$.sealNote").value("Inspected, passed"))
+    }
+
+    @Test
+    fun `PUT arrivals surplus with a remark returns 200 with the updated arrival response DTO`() {
+        val arrival = sampleArrival()
+        val surplusArrival = arrival.copy(isSurplus = true, surplusRemark = "Extra pallet found")
+        `when`(arrivalService.markAsSurplus(1L, "Extra pallet found")).thenReturn(surplusArrival)
+
+        mockMvc.perform(
+                put("/api/arrivals/1/surplus")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(MarkArrivalSurplusRequest(remark = "Extra pallet found")))
+        ).andExpect(status().isOk)
+                .andExpect(jsonPath("$.isSurplus").value(true))
+                .andExpect(jsonPath("$.surplusRemark").value("Extra pallet found"))
+    }
+
+    @Test
+    fun `PUT arrivals surplus with no body returns 200 with a null remark`() {
+        val arrival = sampleArrival()
+        val surplusArrival = arrival.copy(isSurplus = true, surplusRemark = null)
+        `when`(arrivalService.markAsSurplus(eq(1L), isNull())).thenReturn(surplusArrival)
+
+        mockMvc.perform(put("/api/arrivals/1/surplus"))
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$.isSurplus").value(true))
+    }
+
+    @Test
+    fun `PUT arrivals surplus for a missing arrival returns 404`() {
+        `when`(arrivalService.markAsSurplus(eq(99L), isNull())).thenReturn(null)
+
+        mockMvc.perform(put("/api/arrivals/99/surplus"))
+                .andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `PUT arrivals surplus with a remark of exactly 500 characters returns 200`() {
+        val maxLengthRemark = "a".repeat(500)
+        val arrival = sampleArrival()
+        val surplusArrival = arrival.copy(isSurplus = true, surplusRemark = maxLengthRemark)
+        `when`(arrivalService.markAsSurplus(1L, maxLengthRemark)).thenReturn(surplusArrival)
+
+        mockMvc.perform(
+                put("/api/arrivals/1/surplus")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(MarkArrivalSurplusRequest(remark = maxLengthRemark)))
+        ).andExpect(status().isOk)
+                .andExpect(jsonPath("$.isSurplus").value(true))
+                .andExpect(jsonPath("$.surplusRemark").value(maxLengthRemark))
+    }
+
+    @Test
+    fun `PUT arrivals surplus with a remark over 500 characters returns 400 and does not update`() {
+        val tooLongRemark = "a".repeat(501)
+
+        mockMvc.perform(
+                put("/api/arrivals/1/surplus")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(MarkArrivalSurplusRequest(remark = tooLongRemark)))
+        ).andExpect(status().isBadRequest)
+
+        verify(arrivalService, never()).markAsSurplus(eq(1L), anyString())
+    }
+
+    @Test
+    fun `GET arrivals by id surfaces surplus state and remark once set`() {
+        val surplusArrival = sampleArrival().copy(isSurplus = true, surplusRemark = "Extra pallet found")
+        `when`(arrivalService.getArrivalById(1L)).thenReturn(surplusArrival)
+
+        mockMvc.perform(get("/api/arrivals/1"))
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$.isSurplus").value(true))
+                .andExpect(jsonPath("$.surplusRemark").value("Extra pallet found"))
+    }
+
+    @Test
+    fun `GET arrivals by id surfaces waiting, damaged, sealed, and surplus as independent facts with separate notes`() {
+        val allFlaggedArrival = sampleArrival()
+                .copy(
+                        isWaiting = true, remark = "Delayed at customs",
+                        isDamaged = true, damageRemark = "Crushed pallet",
+                        isSealed = true, sealNote = "Inspected, passed",
+                        isSurplus = true, surplusRemark = "Extra pallet found"
+                )
+        `when`(arrivalService.getArrivalById(1L)).thenReturn(allFlaggedArrival)
+
+        mockMvc.perform(get("/api/arrivals/1"))
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$.isWaiting").value(true))
+                .andExpect(jsonPath("$.remark").value("Delayed at customs"))
+                .andExpect(jsonPath("$.isDamaged").value(true))
+                .andExpect(jsonPath("$.damageRemark").value("Crushed pallet"))
+                .andExpect(jsonPath("$.isSealed").value(true))
+                .andExpect(jsonPath("$.sealNote").value("Inspected, passed"))
+                .andExpect(jsonPath("$.isSurplus").value(true))
+                .andExpect(jsonPath("$.surplusRemark").value("Extra pallet found"))
+    }
+
+    @Test
+    fun `PUT arrivals surplus on a delivery already marked waiting, damaged, and sealed adds surplus without corrupting the other facts`() {
+        val alreadyFlaggedArrival = sampleArrival()
+                .copy(
+                        isWaiting = true, remark = "Delayed at customs",
+                        isDamaged = true, damageRemark = "Crushed pallet",
+                        isSealed = true, sealNote = "Inspected, passed"
+                )
+        val surplusArrival = alreadyFlaggedArrival.copy(isSurplus = true, surplusRemark = "Extra pallet found")
+        `when`(arrivalService.markAsSurplus(1L, "Extra pallet found")).thenReturn(surplusArrival)
+
+        mockMvc.perform(
+                put("/api/arrivals/1/surplus")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(MarkArrivalSurplusRequest(remark = "Extra pallet found")))
+        ).andExpect(status().isOk)
+                .andExpect(jsonPath("$.isWaiting").value(true))
+                .andExpect(jsonPath("$.remark").value("Delayed at customs"))
+                .andExpect(jsonPath("$.isDamaged").value(true))
+                .andExpect(jsonPath("$.damageRemark").value("Crushed pallet"))
+                .andExpect(jsonPath("$.isSealed").value(true))
+                .andExpect(jsonPath("$.sealNote").value("Inspected, passed"))
+                .andExpect(jsonPath("$.isSurplus").value(true))
+                .andExpect(jsonPath("$.surplusRemark").value("Extra pallet found"))
     }
 }

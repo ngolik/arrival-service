@@ -37,4 +37,9 @@ class ArrivalServiceImpl(
                 ?.copy(isSealed = true, sealNote = note)
                 ?.let { arrivalRepository.save(it) }
     }
+
+    override fun markAsSurplus(id: Long, remark: String?): Arrival? =
+            arrivalRepository.findById(id).orElse(null)
+                    ?.copy(isSurplus = true, surplusRemark = remark)
+                    ?.let { arrivalRepository.save(it) }
 }
